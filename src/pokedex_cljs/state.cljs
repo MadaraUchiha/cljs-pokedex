@@ -7,31 +7,29 @@
                          :image "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png"
                          :description "A strange seed was planted on its back at birth. The plant sprouts and grows with this POKéMON."})
 
-(defonce store (r/atom {:pokemon      sample-pokemon
+(defonce store (r/atom {:pokemon      {}
                         :pokemon-list []
                         :api-status   :not-started
                         :route        {:handler :home :route-params {}}}))
 
+(defn fetch! [url]
+  (-> (js/fetch url)
+      (.then #(.json %))
+      (.then #(js->clj % :keywordize-keys true))))
+
 (defn fetch-pokemon-list! []
-  (let [url "https://pokeapi.co/api/v2/pokemon?limit=151"
-        response (js/fetch url)]
-    (-> response
-        (.then #(.json %))
-        (.then #(js->clj % :keywordize-keys true))
-        (.then #(swap! store assoc :pokemon-list (:results %))))))
+  (-> (fetch! "https://pokeapi.co/api/v2/pokemon?limit=151")
+      (.then #(swap! store assoc :pokemon-list (:results %)))))
 
 (defn fetch-pokemon! [id]
   (swap! store assoc :api-status :loading)
-  (let [url (str "https://pokeapi.co/api/v2/pokemon/" id)
-        response (js/fetch url)]
-    (-> response
-        (.then #(.json %))
-        (.then #(js->clj % :keywordize-keys true))
-        (.then #(swap! store assoc :pokemon %))
-        (.then #(swap! store assoc :api-status :done))
-        (.catch #(swap! store assoc :api-status :error)))))
+  (-> (fetch! (str "https://pokeapi.co/api/v2/pokemon/" id))
+      (.then #(swap! store assoc :pokemon %))
+      (.then #(swap! store assoc :api-status :done))
+      (.catch #(swap! store assoc :api-status :error))))
 
 (defn change-route! [{:keys [handler route-params]}]
+  (.info js/console "Changing route to" (clj->js {:handler handler :route-params route-params}))
   (swap! store assoc :route {:handler handler :route-params route-params}))
 
 (defn get-pokemon-list []

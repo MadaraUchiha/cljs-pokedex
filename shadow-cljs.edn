@@ -7,6 +7,7 @@
                       :output-dir "public/js"
                       :asset-path "/js"
                       :modules    {:app {:entries [pokedex-cljs.core]}}
-                      :devtools   {:after-load pokedex-cljs.core/mount-root}}}
+                      :devtools   {:after-load  pokedex-cljs.core/mount-root
+                                   :before-load pokedex-cljs.core/unmount-root}}}
 
  :dev-http     {3000 {:root "public"}}}

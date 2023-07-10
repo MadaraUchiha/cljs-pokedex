@@ -11,18 +11,19 @@
 (defn home-page []
   (state/fetch-pokemon-list!)
   (fn []
-    [:div
-     [:h1 "Pokédex"]
-     [:div {:style {:display "grid" :grid-template-columns "repeat(5, 1fr)" :grid-gap "10px"}}
-      (for [{:keys [url name]} (state/get-pokemon-list)]
-        (let [id (helpers/extract-id-from-url url)]
-          ^{:key id} [:div {:style {:text-align :center}}
-                      [routing/link {:route :pokemon :params {:id id}}
-                       [:img {:src (helpers/get-sprite-url id)}]
-                       [:span {:style {:display :block}} (str/capitalize name)]]]))]]))
+    (let [{:keys [pokemon-list]} @state/store]
+      [:div
+       [:h1 "Pokédex"]
+       [:div {:style {:display "grid" :grid-template-columns "repeat(5, 1fr)" :grid-gap "10px"}}
+        (for [{:keys [url name]} pokemon-list]
+          (let [id (helpers/extract-id-from-url url)]
+            ^{:key id} [:div {:style {:text-align :center}}
+                        [routing/link {:route :pokemon :params {:id id}}
+                         [:img {:src (helpers/get-sprite-url id)}]
+                         [:span {:style {:display :block}} (str/capitalize name)]]]))]])))
 
 (defn pokemon-page []
-  (let [id (-> (state/get-route) :route-params :id)]
+  (let [id (get-in @state/store [:route :route-params :id])]
     (state/fetch-pokemon! id)
     (fn []
       [:div
@@ -31,12 +32,12 @@
          :initial [:div "Loading..."]
          :loading [:div "Loading..."]
          :error   [:div "Error!"]
-         :done    (let [{:keys [name types sprites]} (state/get-pokemon)
-                        {:keys [front_default]} sprites]
+         :done    (let [{:keys [name types sprites]} (:pokemon @state/store)
+                        {:keys [front_default]}      sprites]
                     [:div
                      [:h1 [:img {:src front_default}] (str (str/capitalize name) " #" id)]
                      [:p "Types: " (->> types
-                                        (map (fn [type] ^{:key type} [:span (-> type :type :name)]))
+                                        (map (fn [type] ^{:key type} [:span (get-in type [:type :name])]))
                                         (interpose ", "))]]))])))
 
 
@@ -50,8 +51,12 @@
 
 (defn mount-root []
   (state/change-route! (routing/parse-route (.-pathname js/location)))
-  (routing/setup-popstate-listener!)
+  (routing/init-routing!)
+  ; (routing/setup-popstate-listener!)
   (d/render [app] (.getElementById js/document "app")))
+
+(defn unmount-root []
+  (routing/remove-popstate-listener!))
 
 (defn ^:export init! []
   (mount-root))

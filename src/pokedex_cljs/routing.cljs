@@ -12,19 +12,29 @@
   (bidi/path-for routes route params))
 
 (defn navigate! [route & {:as params}]
-  (state/change-route! {:handler route :route-params params})
-  (.pushState js/history nil "" (get-url route params)))
+  (let [target {:handler route :route-params params}]
+    (state/change-route! target)
+    (.pushState js/history (clj->js target) nil (get-url route params))))
 
 (defn link [{:keys [route params]} & children]
   (into [:a {:on-click #(navigate! route params) :style {:cursor "pointer"}}]
         children))
 
+(defn handle-popstate [event]
+  (let [state (-> event .-state js->clj)]
+    (.info js/console "Popstate event" event state)
+    (state/change-route! state)))
+
 (defn setup-popstate-listener! []
-  (.addEventListener
-   js/window
-   "popstate"
-   (fn []
-     (-> js/location
-         .-pathname
-         parse-route
-         state/change-route!))))
+  (.addEventListener js/window  "popstate" handle-popstate))
+
+(defn remove-popstate-listener! []
+  (.removeEventListener js/window  "popstate" handle-popstate))
+
+(defn init-routing! []
+  (setup-popstate-listener!)
+  (-> js/location
+    .-pathname
+    parse-route
+    clj->js
+    (#(.replaceState js/history % nil))))
