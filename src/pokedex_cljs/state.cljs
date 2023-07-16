@@ -12,6 +12,8 @@
                         :api-status   :not-started
                         :route        {:handler :home :route-params {}}}))
 
+(defonce route (r/cursor store [:route]))
+
 (defn fetch! [url]
   (-> (js/fetch url)
       (.then #(.json %))

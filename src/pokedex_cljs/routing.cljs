@@ -1,6 +1,7 @@
 (ns pokedex-cljs.routing
   (:require [bidi.bidi :as bidi]
-            [pokedex-cljs.state :as state]))
+            [pokedex-cljs.state :as state]
+            [reagent.core :as r]))
 
 (def routes ["/" {""               :home
                   ["pokemon/" :id] :pokemon}])
@@ -12,9 +13,7 @@
   (bidi/path-for routes route params))
 
 (defn navigate! [route & {:as params}]
-  (let [target {:handler route :route-params params}]
-    (state/change-route! target)
-    (.pushState js/history (clj->js target) nil (get-url route params))))
+  (state/change-route! {:handler route :route-params params}))
 
 (defn link [{:keys [route params]} & children]
   (into [:a {:on-click #(navigate! route params) :style {:cursor "pointer"}}]
@@ -32,9 +31,17 @@
   (.removeEventListener js/window  "popstate" handle-popstate))
 
 (defn init-routing! []
+  (r/track!
+   #(let [{:keys [handler route-params]} @state/route
+          current-url                    (.-pathname js/location)
+          current-route-url              (get-url handler route-params)]
+      (when-not (= current-url current-route-url)
+        (.pushState js/history nil "" (get-url handler route-params)))))
+
   (setup-popstate-listener!)
+
   (-> js/location
-    .-pathname
-    parse-route
-    clj->js
-    (#(.replaceState js/history % nil))))
+      .-pathname
+      parse-route
+      clj->js
+      (#(.replaceState js/history % nil))))
